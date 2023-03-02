@@ -1,9 +1,11 @@
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.io
+import csv
 import cv2
 import random
 
@@ -11,188 +13,151 @@ import src.deep_ensembels as de
 import src.download_datasets as dd
 from src import utils
 
-#PARAMS
-img_size = 28
-img_flat_size = img_size * img_size
-num_label = 10 # 0 ~ 9
-networks = ['network1', 'network2', 'network3', 'network4', 'network5']
-validation_ratio = 0.1
-gpu_fraction = 0.5
 
-(_,_),(mnist_img, mnist_l) = dd.mnist()
-mnist_x = mnist_img
-mnist_y = np.zeros([mnist_l.shape[0], num_label])
+class Test:
+    def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, num_label=10, gpu_fraction=0.5):
+        print('---------------------------------------------------------------------------')
+        #Config stuff here
+        self.name = name
+        self.model = model
+        self.img_size = img_size
+        self.num_label = num_label #Will want to break up into train and non in the future. The train and non have to have the same number of classes
+        self.validation_ratio = 0.1 #Should not need to adjust, we want most of the data going to test anyways.
+        self.gpu_fraction = gpu_fraction
+        self.networks = ['network1', 'network2', 'network3', 'network4', 'network5'] #Hard coded for now
 
-for i in range(mnist_y.shape[0]):
-    mnist_y[i, mnist_l[i]] = 1
+        #Grabbing data
+        self.train_x, self.train_y = self.get_train_data()
+        self.non_x, self.non_y = self.get_non_train_data()
 
-print("mnist X shape: " + str(mnist_x.shape))
-print("mnist Y shape: " + str(mnist_y.shape))
-
-(not_mnist_img, not_mnist_l) = dd.fashion_mnist()
-
-not_mnist_x = not_mnist_img
-not_mnist_y = np.zeros([not_mnist_l.shape[0], num_label])
-
-for i in range(not_mnist_y.shape[0]):
-    not_mnist_y[i, not_mnist_l[i]] = 1
-
-print("not_mnist X shape: " + str(not_mnist_x.shape))
-print("not_mnist Y shape: " + str(not_mnist_y.shape))
-
-tf.reset_default_graph()
-
-#Initialize Ensemble Networks
-x_list = []
-y_list = []
-output_list = []
-loss_list = []
-train_list = []
-train_var_list = []
-
-# Train each ensemble network
-for i in range(len(networks)):
-    x_image, y_label, output, loss, train_opt, train_vars = de.get_network(networks[i])
-
-    x_list.append(x_image)
-    y_list.append(y_label)
-    output_list.append(output)
-    loss_list.append(loss)
-    train_list.append(train_opt)
-    train_var_list.append(train_vars)
-    
-#Create Session
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = gpu_fraction
-
-sess = tf.InteractiveSession(config=config)
-sess.run(tf.global_variables_initializer())
-saver = tf.train.Saver()
-saver.restore(sess, 'deep_ensembles_models/sess1')
-
-#WANT TO TURN INTO FUNCTIONS
-
-#Testing with MNIST        
-MNIST_sample_index = np.random.choice(mnist_x.shape[0], 10)
-
-# Test with training plotting
-f_Mnist, ax_Mnist = plt.subplots(1, 10, figsize=(12,24))
-
-output_sample     = []
-output_sample_one = []
-
-for i, index in enumerate(MNIST_sample_index):
-    img_MNIST = np.reshape(mnist_x[index], (img_size, img_size))
-    
-    ax_Mnist[i].imshow(img_MNIST, cmap='gray')
-    ax_Mnist[i].axis('off')
-    ax_Mnist[i].set_title(str(i+1) + 'th')
-    
-    output_test = np.zeros([1, num_label])
-    
-    for net_index in range(len(networks)):
-        x_temp = np.reshape(mnist_x[index, :], (1, img_size, img_size, 1))
-        y_temp = np.reshape(mnist_y[index, :], (1, num_label))
+        tf.reset_default_graph() #For tensorflow purposes
         
-        loss_temp, prob_temp = sess.run([loss_list[net_index], output_list[net_index]], 
-                                         feed_dict = {x_list[net_index]: x_temp, y_list[net_index]: y_temp})
-        
-        # Add test prediction for get final prediction
-        output_test += prob_temp
-        
-    # Get final test prediction
-    prob_temp_final = output_test / len(networks)
-    prob_temp_one   = prob_temp
-    
-    output_sample.append(prob_temp_final)
-    output_sample_one.append(prob_temp_one)
+        #Pulling in the NN
+        self.initialize_network()
+        self.create_session()
 
-plt.savefig('images/trained_img.png')
+        #Testing the train and non train datasets
+        self.test_train()
+        self.test_non()
 
-print("====================== Ensemble Result ======================")
-array_ensemble_MNIST = np.zeros([10])
-for i in range(len(output_sample)):
 
-    idx_sample = np.argmax(output_sample[i])
-    max_prob = output_sample[i][0, idx_sample]
-    array_ensemble_MNIST[i] = max_prob
-    
-    print(str(i+1) + 'th sample: label = ' + str(idx_sample) + ', Probability = ' + str(max_prob))
+    #Data Functions
+    def get_train_data(self):
+        '''
+        Function that gets you the test data for the data that has been trained on.
+        Currently hard coded for mnist
+        '''
+        (_,_),(_,_),(train_x,train_y) = dd.mnist(self.validation_ratio)
+        return train_x, train_y
 
-print("\n====================== SingleNet Result ======================")
-array_single_MNIST = np.zeros([10])
-for i in range(len(output_sample_one)):
-    
-    idx_sample = np.argmax(output_sample_one[i])
-    max_prob = output_sample_one[i][0, idx_sample]
-    array_single_MNIST[i] = max_prob
-    
-    print(str(i+1) + 'th sample: label = ' + str(idx_sample) + ', Probability = ' + str(max_prob))
-    
-plt.figure()
-plt.plot(array_ensemble_MNIST, 'or')
-plt.plot(array_single_MNIST, 'ob')
-plt.xlim([-1, 10])
-plt.ylim([np.min(array_single_MNIST) - 0.005, np.max(array_ensemble_MNIST) + 0.005])
-plt.xlabel('Sample Index')
-plt.ylabel('Probability')
-plt.legend(['Ensemble', 'Single'], loc='best')
-plt.savefig('images/trained_results.png')
+    def get_non_train_data(self):
+        '''
+        Function tha get your test data for the open set
+        Currently hard coded for fashion mnist
+        '''
+        (_,_),(_,_),(non_x,non_y) = dd.fashion_mnist(self.validation_ratio)
+        return non_x, non_y
 
-#Test with not training
-not_mnist_sample_index = np.random.choice(not_mnist_x.shape[0], 10)
+    def initialize_network(self):
+        '''
+        Function to initialize the networks
+        Currently hardcoded for deep ensembles
+        '''
+        self.x_list = []
+        self.y_list = []
+        self.output_list = []
+        self.loss_list = []
+        self.train_list = []
+        self.train_var_list = []
 
-# MNIST plotting
-f_not_mnist, ax_not_mnist = plt.subplots(1, 10, figsize=(12,24))
+        for i in range(len(self.networks)):
+            x_image, y_label, output, loss, train_opt, train_vars = de.get_network(self.networks[i])
 
-output_sample     = []
-output_sample_one = []
+            self.x_list.append(x_image)
+            self.y_list.append(y_label)
+            self.output_list.append(output)
+            self.loss_list.append(loss)
+            self.train_list.append(train_opt)
+            self.train_var_list.append(train_vars)
+    
+    def create_session(self):
+        '''
+        Function to create a tf session in order to test the NN
+        '''
+        config = tf.ConfigProto()
+        config.gpu_options.per_process_gpu_memory_fraction = self.gpu_fraction
 
-for i, index in enumerate(not_mnist_sample_index):
-    img_not_mnist = np.reshape(not_mnist_x[index], (img_size, img_size))
-    
-    ax_not_mnist[i].imshow(img_not_mnist, cmap='gray')
-    ax_not_mnist[i].axis('off')
-    ax_not_mnist[i].set_title(str(i+1) + 'th')
-    
-    output_test = np.zeros([1, num_label])
-    
-    for net_index in range(len(networks)):
-        x_temp = np.reshape(not_mnist_x[index, :], (1, img_size, img_size, 1))
-        y_temp = np.reshape(not_mnist_y[index, :], (1, num_label))
-        
-        loss_temp, prob_temp = sess.run([loss_list[net_index], output_list[net_index]], 
-                                         feed_dict = {x_list[net_index]: x_temp, y_list[net_index]: y_temp})
-        
-        # Add test prediction for get final prediction
-        output_test += prob_temp
-        
-    # Get final test prediction
-    prob_temp_final = output_test / len(networks)
-    prob_temp_one   = prob_temp
+        self.sess = tf.InteractiveSession(config=config)
+        self.sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+        saver.restore(self.sess, self.model)
 
-    output_sample.append(prob_temp_final)
-    output_sample_one.append(prob_temp_one)
+    def test_train(self):
+        '''
+        Function to run the dataset that the NN has been trained through the NN
+        '''
+        self.test_n_images(self.train_x, self.train_y, self.name+'/train')
 
-plt.savefig('images/untrained_img.png')
+    def test_non(self):
+        '''
+        Function to run the dataset that has not been trained through the NN
+        '''
+        self.test_n_images(self.non_x, self.non_y, self.name+'/non_train')
 
-print("====================== Ensemble Result ======================")
-array_ensemble_not_mnist = np.zeros([10])
-for i in range(len(output_sample)):
-    
-    idx_sample = np.argmax(output_sample[i])
-    max_prob = output_sample[i][0, idx_sample]
-    array_ensemble_not_mnist[i] = max_prob
-    
-    print(str(i+1) + 'th sample: label = ' + str(idx_sample) + ', Probability = ' + str(max_prob))
+    def test_n_images(self, dataset_x, dataset_y, file_name):
+        '''
+        Running n images through the session
+        Currently hard coded for Deep ensembles
+        '''
+        sample_index = np.random.choice(dataset_x.shape[0], 10)
 
-print("\n====================== SingleNet Result ======================")
-array_single_not_mnist = np.zeros([10])
-for i in range(len(output_sample_one)):
-    
-    idx_sample = np.argmax(output_sample_one[i])
-    max_prob = output_sample_one[i][0, idx_sample]
-    array_single_not_mnist[i] = max_prob
-    
-    print(str(i+1) + 'th sample: label = ' + str(idx_sample) + ', Probability = ' + str(max_prob))
-    
+        fig, ax = plt.subplots(1, 10, figsize=(12,24))
+
+        output_sample     = []
+        output_sample_one = []
+
+        f = open(f'results/{file_name}_results.csv','w')
+        writer = csv.writer(f)
+        writer.writerow(['dataset_index','single_class','single_prob', 'ensemble_class','ensemble_prob'])
+        for i, index in enumerate(sample_index):
+            img = np.reshape(dataset_x[index], (self.img_size, self.img_size))
+
+            ax[i].imshow(img, cmap='gray')
+            ax[i].axis('off')
+            ax[i].set_title(str(i+1) + 'th')
+
+            output_test = np.zeros([1, self.num_label])
+
+            for net_index in range(len(self.networks)):
+                x_temp = np.reshape(dataset_x[index, :], (1, self.img_size, self.img_size, 1))
+                y_temp = np.reshape(dataset_y[index, :], (1, self.num_label))
+
+                loss_temp, prob_temp = self.sess.run([self.loss_list[net_index], self.output_list[net_index]],
+                                         feed_dict = {self.x_list[net_index]: x_temp, self.y_list[net_index]: y_temp})
+
+                # Add test prediction for get final prediction
+                output_test += prob_temp
+
+            # Get final test prediction
+            e_prob = output_test / len(self.networks)
+            s_prob   = prob_temp
+
+            s_class = np.argmax(s_prob)
+            e_class = np.argmax(e_prob)
+            s_acc = s_prob[0,s_class]
+            e_acc = e_prob[0,e_class]
+            writer.writerow([index, s_class, s_acc, e_class, e_acc])
+
+        plt.savefig(f'results/{file_name}_img.png')
+
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--name", type=str, default='test', help='Name of the folder the data is saved to inside of results')
+    parser.add_argument("-m", "--model", type=str, default='deep_ensembles_models/sess1', help='Name of the model that will be imported for testing')
+    parser.add_argument("-s", "--img-size", type=int, default=28, help='Number of pixels across the img')
+    parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
+    parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
+    args = parser.parse_args()
+    os.makedirs(f'results/{args.name}', exist_ok=True)
+    Test(name=args.name, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction)

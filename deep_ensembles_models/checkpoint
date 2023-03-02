@@ -1,3 +1,2 @@
-model_checkpoint_path: "sess1"
+model_checkpoint_path: "ses1"
 all_model_checkpoint_paths: "ses1"
-all_model_checkpoint_paths: "sess1"
