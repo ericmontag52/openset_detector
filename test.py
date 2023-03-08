@@ -27,8 +27,8 @@ class Test:
         self.networks = ['network1', 'network2', 'network3', 'network4', 'network5'] #Hard coded for now
 
         #Grabbing data
-        self.train_x, self.train_y = self.get_train_data()
-        self.non_x, self.non_y = self.get_non_train_data()
+        self.get_train_data()
+        self.get_non_train_data()
 
         tf.reset_default_graph() #For tensorflow purposes
         
@@ -47,16 +47,14 @@ class Test:
         Function that gets you the test data for the data that has been trained on.
         Currently hard coded for mnist
         '''
-        (_,_),(_,_),(train_x,train_y) = dd.mnist(self.validation_ratio)
-        return train_x, train_y
+        (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
 
     def get_non_train_data(self):
         '''
         Function tha get your test data for the open set
         Currently hard coded for fashion mnist
         '''
-        (_,_),(_,_),(non_x,non_y) = dd.fashion_mnist(self.validation_ratio)
-        return non_x, non_y
+        (_,_),(_,_),(self.non_x, self.non_y) = dd.fashion_mnist(self.validation_ratio)
 
     def initialize_network(self):
         '''

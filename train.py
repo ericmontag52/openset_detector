@@ -6,56 +6,59 @@ import os
 import scipy.io
 import cv2
 import random
+import argparse
 
 import src.deep_ensembels as de
 import src.download_datasets as dd
 from src import utils
 
-#PULL INTO CONFIG FILE
-# Parameters of data
-img_size = 28
-img_flat_size = img_size * img_size
-
-num_label = 10 # 0 ~ 9
-
-# Parameters of training
-#Learning_rate = 0.0005
-#epsilon = 1e-8
-
-epoch = 5000
-batch_size = 256
-
-validation_ratio = 0.1
-gpu_fraction = 0.5
-
-# Ensemble networks
-networks = ['network1', 'network2', 'network3', 'network4', 'network5']
-
-# Convolution [kernel size, kernel size, # input, # output]
-#first_conv  = [3,3, 1,32]
-#second_conv = [3,3,32,64]
-
-# Dense [input size, output size]
-#first_dense  = [7*7*64, num_label]
-
 class Train():
-    def __init__(self):
+    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, num_label=10, gpu_fraction=0.5, validation_ratio=0.1):
         #CONFIG STUFF
-        self.epoch = 5000
-        self.batch_size = 256
-        self.validation_ratio = 0.1
-        self.gpu_fraction = 0.5
-        self.networks = ['network1', 'network2', 'network3', 'network4', 'network5']
+        self.name = name
+        self.epoch = epoch
+        self.batch_size = batch_size
+        self.img_size = img_size
+        self.img_flat_size = self.img_size * self.img_size
+        self.num_label = num_label
+        self.model = model
+        self.validation_ratio = validation_ratio
+        self.gpu_fraction = gpu_fraction
+        self.networks = ['network1', 'network2', 'network3', 'network4', 'network5'] #Hard coded for 5 networks
         
-        self.get data()
+        self.get_data()
     
-        #Plotting Datasets
-        utils.plot_ex_dataset(self.train_x, 'train_data_ex.png', num_sample=5, img_size=img_size)
+        utils.plot_ex_dataset(self.train_x, f'results/{name}/train_data_ex.png', num_sample=5, img_size=self.img_size) #Plotting Datasets examples
 
-        #STARTING TRAINING
-        tf.reset_default_graph()
+        tf.reset_default_graph() #For tensorflow purposes
 
-        #Initialize Ensemble Networks
+        self.initialize_network()
+        self.create_session()  
+        
+        self.train()
+
+        self.saver.save(self.sess, self.model)
+        
+    def get_data(self):
+        '''
+        Function to bring in the data for the training session
+        Currently hard coded for MNIST
+        '''
+        (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.mnist(self.validation_ratio)
+        print("\nPrinting MNIST dataset shape") #Replace MNIST with a string variable
+        print("\nTraining X shape: " + str(self.train_x.shape))
+        print("Testing X shape: " + str(self.test_x.shape))
+        print("Validation X shape: " + str(self.validation_x.shape))
+
+        print("\nTraining Y shape: " + str(self.train_y.shape))
+        print("Testing Y shape: " + str(self.test_y.shape))
+        print("Validation Y shape: " + str(self.validation_y.shape) + '\n')
+        
+    def initialize_network(self):
+        '''
+        Function to initialize the networks
+        Currently hardcoded for deep ensembles
+        '''
         self.x_list = []
         self.y_list = []
         self.output_list = []
@@ -63,7 +66,6 @@ class Train():
         self.train_list = []
         self.train_var_list = []
 
-        # Train each ensemble network
         for i in range(len(self.networks)):
             x_image, y_label, output, loss, train_opt, train_vars = de.get_network(self.networks[i])
 
@@ -73,16 +75,19 @@ class Train():
             self.loss_list.append(loss)
             self.train_list.append(train_opt)
             self.train_var_list.append(train_vars)
-
-        #Create Session
+    
+    def create_session(self):
+        '''
+        Function to create a tf session in order to test the NN
+        '''
         config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = self.gpu_fraction
 
         self.sess = tf.InteractiveSession(config=config)
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver()   
-
-        #TRAIN
+        self.saver = tf.train.Saver()
+        
+    def train(self):
         # Initialize data for printing
         loss_check     = np.zeros(len(self.networks))
         acc_check      = np.zeros(len(self.networks))
@@ -93,26 +98,26 @@ class Train():
         num_print = 100
         test_size = 10
 
-        train_data_num = train_x.shape[0]
-        test_data_num  = test_x.shape[0]
+        train_data_num = self.train_x.shape[0]
+        test_data_num  = self.test_x.shape[0]
 
         for iter in range(self.epoch):
-            output_temp = np.zeros([test_size, num_label])
+            output_temp = np.zeros([test_size, self.num_label])
 
             # Making batches(testing)
-            batch_x_test, batch_y_test = utils.making_batch(test_data_num, test_size, test_x, test_y)
+            batch_x_test, batch_y_test = utils.making_batch(test_data_num, test_size, self.test_x, self.test_y)
 
             for i in range(len(self.networks)):
                 # Making batches(training)
-                batch_x, batch_y = utils.making_batch(train_data_num, self.batch_size, train_x, train_y)
+                batch_x, batch_y = utils.making_batch(train_data_num, self.batch_size, self.train_x, self.train_y)
 
                 # Training
-                _, loss, prob = sess.run([train_list[i], loss_list[i], output_list[i]],
-                                 feed_dict = {x_list[i]: batch_x, y_list[i]: batch_y})
+                _, loss, prob = self.sess.run([self.train_list[i], self.loss_list[i], self.output_list[i]],
+                                 feed_dict = {self.x_list[i]: batch_x, self.y_list[i]: batch_y})
 
                 # Testing
-                loss_test, prob_test = sess.run([loss_list[i], output_list[i]],
-                                         feed_dict = {x_list[i]: batch_x_test, y_list[i]: batch_y_test})
+                loss_test, prob_test = self.sess.run([self.loss_list[i], self.output_list[i]],
+                                         feed_dict = {self.x_list[i]: batch_x_test, self.y_list[i]: batch_y_test})
 
                 # Add test prediction for get final prediction
                 output_temp += prob_test
@@ -147,23 +152,17 @@ class Train():
                 acc_check = np.zeros(len(self.networks))
                 acc_check_test = np.zeros(len(self.networks))
                 acc_check_test_final = 0
-
-        self.saver.save(sess, 'deep_ensembles_models/sess1')
-        
-    def get_data(self):
-        '''
-        Function to bring in the data for the training session
-        Currently hard coded for MNIST
-        '''
-        (self.train_x, self.train_y), (self.validation_x, self.validation_y),(test_x, self.test_y) = dd.mnist(self.validation_ratio)
-        print("\nPrinting MNIST dataset shape") #Replace MNIST with a string variable
-        print("\nTraining X shape: " + str(train_x.shape))
-        print("Testing X shape: " + str(test_x.shape))
-        print("Validation X shape: " + str(validation_x.shape))
-
-        print("\nTraining Y shape: " + str(train_y.shape))
-        print("Testing Y shape: " + str(test_y.shape))
-        print("Validation Y shape: " + str(validation_y.shape) + '\n')
         
 if __name__=='__main__':
-    Train()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--name", type=str, default='test', help='Name of the folder the data is saved to inside of results')
+    parser.add_argument("-e", "--epoch", type=int, default=5000, help='Number of epochs in training')
+    parser.add_argument("-b", "--batch-size", type=int, default=256, help='Batch size in training')
+    parser.add_argument("-m", "--model", type=str, default='deep_ensembles_models/sess1', help='Name of the model that will be imported for testing')
+    parser.add_argument("-s", "--img-size", type=int, default=28, help='Number of pixels across the img')
+    parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
+    parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
+    parser.add_argument("-v", "--validation-ratio", type=float, default=0.1, help='Percentage of the test dataset that will go to validation')
+    args = parser.parse_args()
+    os.makedirs(f'results/{args.name}', exist_ok=True)
+    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio)
