@@ -13,14 +13,15 @@ import src.download_datasets as dd
 from src import utils
 
 class Train():
-    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, num_label=10, gpu_fraction=0.5, validation_ratio=0.1):
+    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, dataset='mnist', num_label=10, gpu_fraction=0.5, validation_ratio=0.1):
         #CONFIG STUFF
         self.name = name
         self.epoch = epoch
         self.batch_size = batch_size
         self.img_size = img_size
         self.img_flat_size = self.img_size * self.img_size
-        self.num_label = num_label
+        self.dataset = dataset
+        self.num_label = num_label #DO WE WANT TO MOVE THIS TO THE DOWNLOAD DATASET?
         self.model = model
         self.validation_ratio = validation_ratio
         self.gpu_fraction = gpu_fraction
@@ -44,8 +45,15 @@ class Train():
         Function to bring in the data for the training session
         Currently hard coded for MNIST
         '''
-        (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.mnist(self.validation_ratio)
-        print("\nPrinting MNIST dataset shape") #Replace MNIST with a string variable
+        if self.dataset == 'mnist':
+            (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.mnist(self.validation_ratio)
+        elif self.dataset =='fashion':
+            (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.fashion_mnist(self.validation_ratio)
+        elif self.dataset == 'cifar10':
+            (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.cifar10(self.validation_ratio)
+        elif self.dataset == 'cifar100':
+            (self.train_x, self.train_y), (self.validation_x, self.validation_y),(self.test_x, self.test_y) = dd.cifar100(self.validation_ratio)
+        print(f"\nPrinting {self.dataset} dataset shape")
         print("\nTraining X shape: " + str(self.train_x.shape))
         print("Testing X shape: " + str(self.test_x.shape))
         print("Validation X shape: " + str(self.validation_x.shape))
@@ -160,9 +168,10 @@ if __name__=='__main__':
     parser.add_argument("-b", "--batch-size", type=int, default=256, help='Batch size in training')
     parser.add_argument("-m", "--model", type=str, default='deep_ensembles_models/sess1', help='Name of the model that will be imported for testing')
     parser.add_argument("-s", "--img-size", type=int, default=28, help='Number of pixels across the img')
+    parser.add_argument("-d", "--dataset", type=str, default='mnist', help='The name of the dataset to train')
     parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
     parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
     parser.add_argument("-v", "--validation-ratio", type=float, default=0.1, help='Percentage of the test dataset that will go to validation')
     args = parser.parse_args()
     os.makedirs(f'results/{args.name}', exist_ok=True)
-    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio)
+    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, dataset=args.dataset, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio)

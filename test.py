@@ -15,12 +15,13 @@ from src import utils
 
 
 class Test:
-    def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, num_label=10, gpu_fraction=0.5):
-        print('---------------------------------------------------------------------------')
+    def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, train_dataset='mnist', non_dataset='fashion', num_label=10, gpu_fraction=0.5):
         #Config stuff here
         self.name = name
         self.model = model
         self.img_size = img_size
+        self.train_dataset = train_dataset
+        self.non_dataset = non_dataset
         self.num_label = num_label #Will want to break up into train and non in the future. The train and non have to have the same number of classes
         self.validation_ratio = 0.1 #Should not need to adjust, we want most of the data going to test anyways.
         self.gpu_fraction = gpu_fraction
@@ -47,21 +48,34 @@ class Test:
         Function that gets you the test data for the data that has been trained on.
         Currently hard coded for mnist
         '''
-        (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
+        if train_dataset == 'mnist':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
+        elif train_dataset == 'fashion':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.fashion(self.validation_ratio)
+        elif train_dataset == 'cifar10':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar10(self.validation_ratio)
+        elif train_dataset == 'cifar100':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar100(self.validation_ratio)
 
     def get_non_train_data(self):
         '''
         Function tha get your test data for the open set
         Currently hard coded for fashion mnist
         '''
-        (_,_),(_,_),(self.non_x, self.non_y) = dd.fashion_mnist(self.validation_ratio)
+        if train_dataset == 'mnist':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
+        elif train_dataset == 'fashion':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.fashion(self.validation_ratio)
+        elif train_dataset == 'cifar10':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar10(self.validation_ratio)
+        elif train_dataset == 'cifar100':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar100(self.validation_ratio)
 
     def initialize_network(self):
         '''
         Function to initialize the networks
         Currently hardcoded for deep ensembles
         '''
-        self.x_list = []
         self.y_list = []
         self.output_list = []
         self.loss_list = []
