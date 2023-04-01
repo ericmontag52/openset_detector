@@ -1,5 +1,6 @@
 import keras.datasets
 import numpy as np
+import tensorflow as tf
 
 validation_ratio = .1
 num_label = 10 # 0 ~ 9
@@ -29,7 +30,7 @@ def mnist(validation_ratio):
 
     for i in range(validation_y.shape[0]):
         validation_y[i, validation_y_index[i]] = 1
-        return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
+    return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
     
 def fashion_mnist(validation_ratio):
     (train_img, train_l), (testval_img, testval_l) = keras.datasets.fashion_mnist.load_data()
@@ -56,7 +57,7 @@ def fashion_mnist(validation_ratio):
 
     for i in range(validation_y.shape[0]):
         validation_y[i, validation_y_index[i]] = 1
-        return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
+    return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
 
 def cifar10(validation_ratio):
     (train_img, train_l), (testval_img, testval_l) = keras.datasets.cifar10.load_data()
@@ -83,9 +84,10 @@ def cifar10(validation_ratio):
 
     for i in range(validation_y.shape[0]):
         validation_y[i, validation_y_index[i]] = 1
-        return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
+    return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
 
 def cifar100(validation_ratio):
+    #CANT DO RIGHT NOW. THE MODEL DOES NOT LINE UP WITH THIS
     num_label = 100
     (train_img, train_l), (testval_img, testval_l) = keras.datasets.cifar100.load_data(label_mode="fine")
     test_len = testval_l.shape[0]
@@ -111,5 +113,5 @@ def cifar100(validation_ratio):
 
     for i in range(validation_y.shape[0]):
         validation_y[i, validation_y_index[i]] = 1
-        return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
+    return (train_x, train_y), (validation_x,validation_y),(test_x,test_y)
 

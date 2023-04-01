@@ -8,7 +8,9 @@ import scipy.io
 import csv
 import cv2
 import random
+import time
 
+from skimage.transform import resize
 import src.deep_ensembels as de
 import src.download_datasets as dd
 from src import utils
@@ -48,13 +50,13 @@ class Test:
         Function that gets you the test data for the data that has been trained on.
         Currently hard coded for mnist
         '''
-        if train_dataset == 'mnist':
+        if self.train_dataset == 'mnist':
             (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
-        elif train_dataset == 'fashion':
-            (_,_),(_,_),(self.train_x, self.train_y) = dd.fashion(self.validation_ratio)
-        elif train_dataset == 'cifar10':
+        elif self.train_dataset == 'fashion':
+            (_,_),(_,_),(self.train_x, self.train_y) = dd.fashion_mnist(self.validation_ratio)
+        elif self.train_dataset == 'cifar10':
             (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar10(self.validation_ratio)
-        elif train_dataset == 'cifar100':
+        elif self.train_dataset == 'cifar100':
             (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar100(self.validation_ratio)
 
     def get_non_train_data(self):
@@ -62,20 +64,21 @@ class Test:
         Function tha get your test data for the open set
         Currently hard coded for fashion mnist
         '''
-        if train_dataset == 'mnist':
-            (_,_),(_,_),(self.train_x, self.train_y) = dd.mnist(self.validation_ratio)
-        elif train_dataset == 'fashion':
-            (_,_),(_,_),(self.train_x, self.train_y) = dd.fashion(self.validation_ratio)
-        elif train_dataset == 'cifar10':
-            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar10(self.validation_ratio)
-        elif train_dataset == 'cifar100':
-            (_,_),(_,_),(self.train_x, self.train_y) = dd.cifar100(self.validation_ratio)
+        if self.non_dataset == 'mnist':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.mnist(self.validation_ratio)
+        elif self.non_dataset == 'fashion':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.fashion_mnist(self.validation_ratio)
+        elif self.non_dataset == 'cifar10':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.cifar10(self.validation_ratio)
+        elif self.non_dataset == 'cifar100':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.cifar100(self.validation_ratio)
 
     def initialize_network(self):
         '''
         Function to initialize the networks
         Currently hardcoded for deep ensembles
         '''
+        self.x_list = []
         self.y_list = []
         self.output_list = []
         self.loss_list = []
@@ -108,20 +111,20 @@ class Test:
         '''
         Function to run the dataset that the NN has been trained through the NN
         '''
-        self.test_n_images(self.train_x, self.train_y, self.name+'/train')
+        self.test_n_images(self.train_x, self.train_y, self.name+f'/train_{self.non_dataset}')
 
     def test_non(self):
         '''
         Function to run the dataset that has not been trained through the NN
         '''
-        self.test_n_images(self.non_x, self.non_y, self.name+'/non_train')
+        self.test_n_images(self.non_x, self.non_y, self.name+f'/non_train_{self.non_dataset}')
 
     def test_n_images(self, dataset_x, dataset_y, file_name):
         '''
         Running n images through the session
         Currently hard coded for Deep ensembles
         '''
-        sample_index = np.random.choice(dataset_x.shape[0], 10)
+        sample_index = np.random.choice(dataset_x.shape[0], self.num_label)
 
         fig, ax = plt.subplots(1, 10, figsize=(12,24))
 
@@ -130,9 +133,9 @@ class Test:
 
         f = open(f'results/{file_name}_results.csv','w')
         writer = csv.writer(f)
-        writer.writerow(['dataset_index','single_class','single_prob', 'ensemble_class','ensemble_prob'])
+        writer.writerow(['time(s)', 'dataset_index','single_class','single_prob', 'ensemble_class','ensemble_prob'])
         for i, index in enumerate(sample_index):
-            img = np.reshape(dataset_x[index], (self.img_size, self.img_size))
+            img = resize(dataset_x[index], (self.img_size, self.img_size))
 
             ax[i].imshow(img, cmap='gray')
             ax[i].axis('off')
@@ -141,11 +144,16 @@ class Test:
             output_test = np.zeros([1, self.num_label])
 
             for net_index in range(len(self.networks)):
-                x_temp = np.reshape(dataset_x[index, :], (1, self.img_size, self.img_size, 1))
+                x_temp = resize(dataset_x[index, :], (1, self.img_size, self.img_size, 1))
                 y_temp = np.reshape(dataset_y[index, :], (1, self.num_label))
 
+                #Begin timer
+                start = time.time()
                 loss_temp, prob_temp = self.sess.run([self.loss_list[net_index], self.output_list[net_index]],
                                          feed_dict = {self.x_list[net_index]: x_temp, self.y_list[net_index]: y_temp})
+                #End timer
+                end = time.time()
+                t = end - start
 
                 # Add test prediction for get final prediction
                 output_test += prob_temp
@@ -158,7 +166,7 @@ class Test:
             e_class = np.argmax(e_prob)
             s_acc = s_prob[0,s_class]
             e_acc = e_prob[0,e_class]
-            writer.writerow([index, s_class, s_acc, e_class, e_acc])
+            writer.writerow([t, index, s_class, s_acc, e_class, e_acc])
 
         plt.savefig(f'results/{file_name}_img.png')
 
@@ -170,6 +178,8 @@ if __name__=='__main__':
     parser.add_argument("-s", "--img-size", type=int, default=28, help='Number of pixels across the img')
     parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
     parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
+    parser.add_argument("-d", "--dataset", type=str, default='mnist', help='The name of the dataset to train')
+    parser.add_argument("-nd", "--non-dataset", type=str, default='fashion', help='The name of the non dataset to train')
     args = parser.parse_args()
     os.makedirs(f'results/{args.name}', exist_ok=True)
-    Test(name=args.name, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction)
+    Test(name=args.name, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction, non_dataset=args.non_dataset)

@@ -149,7 +149,7 @@ class Train():
             acc_check_test_final += acc_testing_final
 
             if iter % num_print == 0 and iter != 0:
-                print(('-------------------------') + ' Iteration: ' + str(iter) + ' -------------------------')
+                print(('-------------------------') + ' Epoch: ' + str(iter) + ' -------------------------')
                 print('Average Loss(Brier score): ' + str(loss_check / num_print))
                 print('Training Accuracy: ' + str(acc_check / num_print))
                 print('Testing Accuracy: ' + str(acc_check_test / num_print))

@@ -2,4 +2,5 @@ tensorflow-gpu==2.11
 matplotlib
 pandas
 scikit-learn
+scikit-image
 opencv-python

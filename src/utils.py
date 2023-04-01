@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from skimage.transform import resize
 
-def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=28):
+def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=32):
     #num_sample = 5
 
     sample_index = np.random.choice(dataset.shape[0], num_sample)
@@ -9,7 +10,7 @@ def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=28):
     f, ax = plt.subplots(1, num_sample)
 
     for i in range(num_sample):
-        img = np.reshape(dataset[sample_index[i]], (img_size, img_size))
+        img = resize(dataset[sample_index[i]], (28, 28))
         ax[i].imshow(img, cmap='gray')
         ax[i].axis('off')
 
@@ -24,7 +25,7 @@ def making_batch(data_size, sample_size, data_x, data_y, img_size=28, num_label=
     batch_y = np.zeros([sample_size, num_label])
 
     for i in range(batch_idx.shape[0]):
-        batch_x[i,:,:,:] = np.reshape(data_x[batch_idx[i], :], (img_size, img_size, 1))
+        batch_x[i,:,:,:] = resize(data_x[batch_idx[i], :], (img_size, img_size, 1))
         batch_y[i,:]     = data_y[batch_idx[i], :]
 
     return batch_x, batch_y
