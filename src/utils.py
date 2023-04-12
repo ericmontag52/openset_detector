@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skimage.transform import resize
 
-def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=32):
+def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=28):
     #num_sample = 5
 
     sample_index = np.random.choice(dataset.shape[0], num_sample)
@@ -10,7 +10,7 @@ def plot_ex_dataset(dataset, img_file, num_sample=5, img_size=32):
     f, ax = plt.subplots(1, num_sample)
 
     for i in range(num_sample):
-        img = resize(dataset[sample_index[i]], (28, 28))
+        img = resize(dataset[sample_index[i]], (img_size, img_size))
         ax[i].imshow(img, cmap='gray')
         ax[i].axis('off')
 

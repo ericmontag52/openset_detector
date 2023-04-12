@@ -17,7 +17,7 @@ from src import utils
 
 
 class Test:
-    def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, train_dataset='mnist', non_dataset='fashion', num_label=10, gpu_fraction=0.5):
+    def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, train_dataset='mnist', non_dataset='fashion', num_label=10, gpu_fraction=0.5, num_net=5):
         #Config stuff here
         self.name = name
         self.model = model
@@ -27,7 +27,7 @@ class Test:
         self.num_label = num_label #Will want to break up into train and non in the future. The train and non have to have the same number of classes
         self.validation_ratio = 0.1 #Should not need to adjust, we want most of the data going to test anyways.
         self.gpu_fraction = gpu_fraction
-        self.networks = ['network1', 'network2', 'network3', 'network4', 'network5'] #Hard coded for now
+        self.get_num_net(num_net)
 
         #Grabbing data
         self.get_train_data()
@@ -73,6 +73,11 @@ class Test:
         elif self.non_dataset == 'cifar100':
             (_,_),(_,_),(self.non_x, self.non_y) = dd.cifar100(self.validation_ratio)
 
+    def get_num_net(self, num_net):
+        self.networks = []
+        for i in range(num_net):
+            self.networks.append(f'network{i}')
+    
     def initialize_network(self):
         '''
         Function to initialize the networks
@@ -180,6 +185,7 @@ if __name__=='__main__':
     parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
     parser.add_argument("-d", "--dataset", type=str, default='mnist', help='The name of the dataset to train')
     parser.add_argument("-nd", "--non-dataset", type=str, default='fashion', help='The name of the non dataset to train')
+    parser.add_argument("-nn", "--num_net", type=int, default=5, help='Number of networks in the ensemble')
     args = parser.parse_args()
     os.makedirs(f'results/{args.name}', exist_ok=True)
-    Test(name=args.name, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction, non_dataset=args.non_dataset)
+    Test(name=args.name, model=args.model, img_size=args.img_size, num_label=args.num_label, gpu_fraction=args.gpu_fraction, non_dataset=args.non_dataset, num_net=args.num_net)

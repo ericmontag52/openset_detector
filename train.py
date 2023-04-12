@@ -13,7 +13,7 @@ import src.download_datasets as dd
 from src import utils
 
 class Train():
-    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, dataset='mnist', num_label=10, gpu_fraction=0.5, validation_ratio=0.1):
+    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, dataset='mnist', num_label=10, gpu_fraction=1.0, validation_ratio=0.1, num_net=5):
         #CONFIG STUFF
         self.name = name
         self.epoch = epoch
@@ -25,7 +25,7 @@ class Train():
         self.model = model
         self.validation_ratio = validation_ratio
         self.gpu_fraction = gpu_fraction
-        self.networks = ['network1', 'network2', 'network3', 'network4', 'network5'] #Hard coded for 5 networks
+        self.get_num_net(num_net)
         
         self.get_data()
     
@@ -62,6 +62,11 @@ class Train():
         print("Testing Y shape: " + str(self.test_y.shape))
         print("Validation Y shape: " + str(self.validation_y.shape) + '\n')
         
+    def get_num_net(self, num_net):
+        self.networks = []
+        for i in range(num_net):
+            self.networks.append(f'network{i}')
+    
     def initialize_network(self):
         '''
         Function to initialize the networks
@@ -172,6 +177,8 @@ if __name__=='__main__':
     parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
     parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
     parser.add_argument("-v", "--validation-ratio", type=float, default=0.1, help='Percentage of the test dataset that will go to validation')
+    parser.add_argument("-nn", "--num_net", type=int, default=5, help='Number of networks in the ensemble')
     args = parser.parse_args()
     os.makedirs(f'results/{args.name}', exist_ok=True)
-    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, dataset=args.dataset, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio)
+    os.makedirs(f'{args.model}', exist_ok=True)
+    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, dataset=args.dataset, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio, num_net=args.num_net)
