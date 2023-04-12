@@ -1,1 +1,1 @@
-bash test_bash.sh 2070
+bash test_bash.sh x86
