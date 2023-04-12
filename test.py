@@ -15,6 +15,9 @@ import src.deep_ensembels as de
 import src.download_datasets as dd
 from src import utils
 
+img_size=28
+num_label=10
+networks=[0,0,0,0,0]
 
 class Test:
     def __init__(self, name='test', model='deep_ensembles_models/sess1', img_size=28, train_dataset='mnist', non_dataset='fashion', num_label=10, gpu_fraction=0.5, num_net=5):
@@ -129,9 +132,9 @@ class Test:
         Running n images through the session
         Currently hard coded for Deep ensembles
         '''
-        sample_index = np.random.choice(dataset_x.shape[0], self.num_label)
+        sample_index = np.random.choice(dataset_x.shape[0], 100)
 
-        fig, ax = plt.subplots(1, 10, figsize=(12,24))
+        fig, ax = plt.subplots(1, 100, figsize=(12,24))
 
         output_sample     = []
         output_sample_one = []
@@ -149,7 +152,7 @@ class Test:
             output_test = np.zeros([1, self.num_label])
 
             for net_index in range(len(self.networks)):
-                x_temp = resize(dataset_x[index, :], (1, self.img_size, self.img_size, 1))
+                x_temp = np.reshape(dataset_x[index, :], (1, self.img_size, self.img_size, 1))
                 y_temp = np.reshape(dataset_y[index, :], (1, self.num_label))
 
                 #Begin timer
@@ -174,7 +177,7 @@ class Test:
             writer.writerow([t, index, s_class, s_acc, e_class, e_acc])
 
         plt.savefig(f'results/{file_name}_img.png')
-
+        
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

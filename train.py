@@ -13,7 +13,7 @@ import src.download_datasets as dd
 from src import utils
 
 class Train():
-    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, dataset='mnist', num_label=10, gpu_fraction=1.0, validation_ratio=0.1, num_net=5):
+    def __init__(self, name='test', epoch = 5000, batch_size = 256, model='deep_ensembles_models/sess1', img_size=28, dataset='mnist', num_label=10, gpu_fraction=1.0, validation_ratio=0.1, non_dataset='fashion', num_net=5):
         #CONFIG STUFF
         self.name = name
         self.epoch = epoch
@@ -21,6 +21,7 @@ class Train():
         self.img_size = img_size
         self.img_flat_size = self.img_size * self.img_size
         self.dataset = dataset
+        self.non_dataset = non_dataset
         self.num_label = num_label #DO WE WANT TO MOVE THIS TO THE DOWNLOAD DATASET?
         self.model = model
         self.validation_ratio = validation_ratio
@@ -61,6 +62,20 @@ class Train():
         print("\nTraining Y shape: " + str(self.train_y.shape))
         print("Testing Y shape: " + str(self.test_y.shape))
         print("Validation Y shape: " + str(self.validation_y.shape) + '\n')
+        
+    def get_non_train_data(self):
+        '''
+        Function tha get your test data for the open set
+        Currently hard coded for fashion mnist
+        '''
+        if self.non_dataset == 'mnist':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.mnist(self.validation_ratio)
+        elif self.non_dataset == 'fashion':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.fashion_mnist(self.validation_ratio)
+        elif self.non_dataset == 'cifar10':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.cifar10(self.validation_ratio)
+        elif self.non_dataset == 'cifar100':
+            (_,_),(_,_),(self.non_x, self.non_y) = dd.cifar100(self.validation_ratio)
         
     def get_num_net(self, num_net):
         self.networks = []
@@ -165,6 +180,7 @@ class Train():
                 acc_check = np.zeros(len(self.networks))
                 acc_check_test = np.zeros(len(self.networks))
                 acc_check_test_final = 0
+                
         
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -177,8 +193,9 @@ if __name__=='__main__':
     parser.add_argument("-l", "--num-label", type=int, default=10, help='Number of classes in the datasets')
     parser.add_argument("-g", "--gpu-fraction", type=float, default=0.5, help='Percentage of the GPU being utilized')
     parser.add_argument("-v", "--validation-ratio", type=float, default=0.1, help='Percentage of the test dataset that will go to validation')
+    parser.add_argument("-nd", "--non-dataset", type=str, default='fashion', help='The name of the non dataset to train')
     parser.add_argument("-nn", "--num_net", type=int, default=5, help='Number of networks in the ensemble')
     args = parser.parse_args()
     os.makedirs(f'results/{args.name}', exist_ok=True)
     os.makedirs(f'{args.model}', exist_ok=True)
-    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, dataset=args.dataset, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio, num_net=args.num_net)
+    Train(name=args.name, epoch=args.epoch, batch_size=args.batch_size, model=args.model, img_size=args.img_size, dataset=args.dataset, num_label=args.num_label, gpu_fraction=args.gpu_fraction, validation_ratio=args.validation_ratio, non_dataset=args.non_dataset, num_net=args.num_net)
