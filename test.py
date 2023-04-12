@@ -1,3 +1,4 @@
+import cv2
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 import argparse
@@ -6,7 +7,6 @@ import matplotlib.pyplot as plt
 import os
 import scipy.io
 import csv
-import cv2
 import random
 import time
 

@@ -1,4 +1,4 @@
-tensorflow-gpu==2.11
+#tensorflow-gpu==2.11
 matplotlib
 pandas
 scikit-learn
