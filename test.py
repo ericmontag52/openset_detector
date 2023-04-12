@@ -141,7 +141,7 @@ class Test:
 
         f = open(f'results/{file_name}_results.csv','w')
         writer = csv.writer(f)
-        writer.writerow(['time(s)', 'dataset_index','single_class','single_prob', 'ensemble_class','ensemble_prob'])
+        writer.writerow(['time(s)', 'dataset_index','class','single_class','single_prob', 'ensemble_class','ensemble_prob'])
         for i, index in enumerate(sample_index):
             img = resize(dataset_x[index], (self.img_size, self.img_size))
 
@@ -174,7 +174,7 @@ class Test:
             e_class = np.argmax(e_prob)
             s_acc = s_prob[0,s_class]
             e_acc = e_prob[0,e_class]
-            writer.writerow([t, index, s_class, s_acc, e_class, e_acc])
+            writer.writerow([t, index, np.argmax(y_temp), s_class, s_acc, e_class, e_acc])
 
         plt.savefig(f'results/{file_name}_img.png')
         
